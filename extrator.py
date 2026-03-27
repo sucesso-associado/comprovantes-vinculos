@@ -34,7 +34,7 @@ def extrair_dados_pdf(arquivo_pdf):
 
         # Mantive o modelo que você testou e deu certo
         resposta = client.models.generate_content(
-            model='gemini-2.0-flash', 
+            model='gemini-2.5-flash', 
             contents=[
                 types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf'),
                 prompt
