@@ -1,0 +1,4 @@
+pdfplumber
+requests
+pandas
+streamlit
