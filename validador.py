@@ -2,9 +2,14 @@ import pandas as pd
 import re
 import requests
 import io
-import unicodedata # <--- Nova biblioteca para lidar com acentos
+import unicodedata
+import os
+from dotenv import load_dotenv
 
-URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vStbYGz6Lq-6ZBrCawbKxItY-OzTTLABh-iS1efLY5WZgREDNeJNkH9J23peyde89H7lzzm8tPYQymA/pub?output=csv"
+# Carrega as variáveis do cofre (Secrets do Streamlit ou .env local)
+load_dotenv()
+
+URL_PLANILHA = os.getenv("URL_PLANILHA")
 
 def limpar_cnpj(cnpj):
     if not isinstance(cnpj, str): cnpj = str(cnpj)
