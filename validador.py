@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 
-URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vStbYGz6Lq-6ZBrCawbKxItY-OzTTLABh-iS1efLY5WZgREDNeJNkH9J23peyde89H7lzzm8tPYQymA/pub?output=csv"
+URL_PLANILHA = "[https://docs.google.com/spreadsheets/d/e/2PACX-1vStbYGz6Lq-6ZBrCawbKxItY-OzTTLABh-iS1efLY5WZgREDNeJNkH9J23peyde89H7lzzm8tPYQymA/pub?output=csv](https://docs.google.com/spreadsheets/d/e/2PACX-1vStbYGz6Lq-6ZBrCawbKxItY-OzTTLABh-iS1efLY5WZgREDNeJNkH9J23peyde89H7lzzm8tPYQymA/pub?output=csv)"
 
 def limpar_cnpj(cnpj):
     if not isinstance(cnpj, str): cnpj = str(cnpj)
@@ -25,7 +25,6 @@ def validar_com_planilha(dados_pdf):
         checklist = {}
         divergencias = 0
         
-        # Função auxiliar para limpar NaN da planilha
         def pegar_valor(coluna):
             valor = linha.get(coluna)
             return "" if pd.isna(valor) else str(valor).strip()
@@ -44,11 +43,34 @@ def validar_com_planilha(dados_pdf):
         checklist["Razão Social"] = {"ok": ok_razao, "pdf": dados_pdf.get("Razão Social"), "planilha": pegar_valor("Razão Social")}
         if not ok_razao: divergencias += 1
             
-        # 3. Validar Responsável Rede
-        resp_pdf = str(dados_pdf.get("Responsável Rede", "")).upper().strip()
+        # 3. Validar Responsáveis Rede (NOVA LÓGICA DE LISTAS)
+        responsaveis_pdf = dados_pdf.get("Responsáveis Rede", [])
+        
+        # Garante que seja uma lista
+        if isinstance(responsaveis_pdf, str):
+            responsaveis_pdf = [responsaveis_pdf]
+        elif not isinstance(responsaveis_pdf, list):
+            responsaveis_pdf = []
+
+        lista_pdf_limpa = [str(nome).upper().strip() for nome in responsaveis_pdf if nome]
         resp_planilha = pegar_valor("Responsáveis Rede").upper()
-        ok_resp = (resp_pdf in resp_planilha) or (resp_planilha in resp_pdf) if resp_pdf and resp_planilha else False
-        checklist["Responsável pela Rede"] = {"ok": ok_resp, "pdf": dados_pdf.get("Responsável Rede"), "planilha": pegar_valor("Responsáveis Rede")}
+
+        # Verifica se PELO MENOS UM dos nomes do PDF está na lista da planilha
+        ok_resp = False
+        for nome_pdf in lista_pdf_limpa:
+            if nome_pdf in resp_planilha:
+                ok_resp = True
+                break
+
+        # Formatação para a tela
+        texto_pdf_tela = ", ".join([str(n).title() for n in responsaveis_pdf if n]) if responsaveis_pdf else "Nenhum encontrado"
+        texto_planilha_tela = pegar_valor("Responsáveis Rede")
+
+        checklist["Responsáveis pela Rede"] = {
+            "ok": ok_resp, 
+            "pdf": texto_pdf_tela, 
+            "planilha": texto_planilha_tela
+        }
         if not ok_resp: divergencias += 1
 
         status_final = "Aprovado" if divergencias == 0 else "Divergente"
