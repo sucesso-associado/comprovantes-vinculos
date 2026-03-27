@@ -1,4 +1,6 @@
-pdfplumber
-requests
-pandas
 streamlit
+pandas
+requests
+pdfplumber
+google-genai
+python-dotenv
