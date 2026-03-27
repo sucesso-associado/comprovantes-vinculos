@@ -1,7 +1,9 @@
 import pandas as pd
 import re
+import requests
+import io
 
-URL_PLANILHA = "[https://docs.google.com/spreadsheets/d/e/2PACX-1vStbYGz6Lq-6ZBrCawbKxItY-OzTTLABh-iS1efLY5WZgREDNeJNkH9J23peyde89H7lzzm8tPYQymA/pub?output=csv](https://docs.google.com/spreadsheets/d/e/2PACX-1vStbYGz6Lq-6ZBrCawbKxItY-OzTTLABh-iS1efLY5WZgREDNeJNkH9J23peyde89H7lzzm8tPYQymA/pub?output=csv)"
+URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vStbYGz6Lq-6ZBrCawbKxItY-OzTTLABh-iS1efLY5WZgREDNeJNkH9J23peyde89H7lzzm8tPYQymA/pub?output=csv"
 
 def limpar_cnpj(cnpj):
     if not isinstance(cnpj, str): cnpj = str(cnpj)
@@ -12,7 +14,16 @@ def validar_com_planilha(dados_pdf):
         return {"erro": "Sem CNPJ para validar."}
         
     try:
-        df = pd.read_csv(URL_PLANILHA)
+        # --- A MÁGICA NOVA AQUI ---
+        # 1. Fazemos o download blindado da planilha usando requests
+        resposta = requests.get(URL_PLANILHA)
+        if resposta.status_code != 200:
+            return {"erro": f"Falha ao acessar a planilha online. Status: {resposta.status_code}"}
+        
+        # 2. Lemos o texto baixado como se fosse um arquivo pro Pandas não se perder
+        df = pd.read_csv(io.StringIO(resposta.text))
+        # ---------------------------
+        
         cnpj_busca = limpar_cnpj(dados_pdf["CNPJ"])
         df['CNPJ_Limpo'] = df['CNPJ'].apply(limpar_cnpj)
         
@@ -43,10 +54,9 @@ def validar_com_planilha(dados_pdf):
         checklist["Razão Social"] = {"ok": ok_razao, "pdf": dados_pdf.get("Razão Social"), "planilha": pegar_valor("Razão Social")}
         if not ok_razao: divergencias += 1
             
-        # 3. Validar Responsáveis Rede (NOVA LÓGICA DE LISTAS)
+        # 3. Validar Responsáveis Rede
         responsaveis_pdf = dados_pdf.get("Responsáveis Rede", [])
         
-        # Garante que seja uma lista
         if isinstance(responsaveis_pdf, str):
             responsaveis_pdf = [responsaveis_pdf]
         elif not isinstance(responsaveis_pdf, list):
@@ -55,14 +65,12 @@ def validar_com_planilha(dados_pdf):
         lista_pdf_limpa = [str(nome).upper().strip() for nome in responsaveis_pdf if nome]
         resp_planilha = pegar_valor("Responsáveis Rede").upper()
 
-        # Verifica se PELO MENOS UM dos nomes do PDF está na lista da planilha
         ok_resp = False
         for nome_pdf in lista_pdf_limpa:
             if nome_pdf in resp_planilha:
                 ok_resp = True
                 break
 
-        # Formatação para a tela
         texto_pdf_tela = ", ".join([str(n).title() for n in responsaveis_pdf if n]) if responsaveis_pdf else "Nenhum encontrado"
         texto_planilha_tela = pegar_valor("Responsáveis Rede")
 
