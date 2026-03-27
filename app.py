@@ -34,7 +34,6 @@ st.divider()
 if arquivo_pdf is not None:
     if st.button("🚀 Processar e Validar Tudo", use_container_width=True):
         
-        # --- ETAPA 1: EXTRAÇÃO ---
         with st.spinner("Lendo o PDF com Inteligência Artificial..."):
             dados_pdf = extrair_dados_pdf(arquivo_pdf)
         
@@ -42,11 +41,19 @@ if arquivo_pdf is not None:
             st.error(dados_pdf["erro"])
         else:
             st.subheader("📑 1. Dados Lidos do Documento")
-            # Mostra os dados em colunas para ficar elegante
             c1, c2, c3 = st.columns(3)
             c1.metric("CNPJ", dados_pdf.get("CNPJ", "-"))
             c2.metric("Data do Doc.", dados_pdf.get("Data", "-"))
-            c3.metric("Responsável", dados_pdf.get("Responsável Rede", "-"))
+            
+            # TRATAMENTO PARA A LISTA DE RESPONSÁVEIS NA TELA
+            resp_lista = dados_pdf.get("Responsáveis Rede", [])
+            if isinstance(resp_lista, list):
+                resp_texto = ", ".join([str(n) for n in resp_lista if n]) if resp_lista else "-"
+            else:
+                resp_texto = str(resp_lista)
+                
+            c3.metric("Responsáveis", resp_texto)
+            
             st.write(f"**Nome:** {dados_pdf.get('Nome')}")
             st.write(f"**Razão Social:** {dados_pdf.get('Razão Social')}")
             
@@ -55,7 +62,6 @@ if arquivo_pdf is not None:
             
             col_receita, col_planilha = st.columns(2)
             
-            # --- ETAPA 2: RECEITA FEDERAL ---
             with col_receita:
                 st.markdown("#### 🏛️ Receita Federal")
                 with st.spinner("Consultando CNPJ..."):
@@ -74,7 +80,6 @@ if arquivo_pdf is not None:
                     st.write(f"**Atividade (CNAE):** {dados_receita.get('CNAE')} - {dados_receita.get('Atividade')}")
                     st.caption(f"📍 {dados_receita.get('Endereço')}")
 
-            # --- ETAPA 3: PLANILHA INTERNA ---
             with col_planilha:
                 st.markdown("#### 📊 Base de Dados (Planilha)")
                 with st.spinner("Cruzando dados..."):
@@ -87,13 +92,12 @@ if arquivo_pdf is not None:
                 else:
                     checklist = resultado_validacao.get("checklist", {})
                     
-                    # Desenha o checklist
                     for campo, info in checklist.items():
                         icone = "✅" if info["ok"] else "❌"
                         st.markdown(f"**{icone} {campo}**")
                         st.markdown(f"> 📄 **No PDF:** {info['pdf']}  \n> 🗂️ **Na Planilha:** {info['planilha']}")
                     
-                    st.write("") # Espaço
+                    st.write("") 
                     if resultado_validacao["status"] == "Aprovado":
                         st.success("🎉 **TUDO CERTO!** Os dados batem perfeitamente com a planilha interna.")
                     else:
