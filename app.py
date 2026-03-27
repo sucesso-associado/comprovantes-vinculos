@@ -7,8 +7,8 @@ from validador import validar_com_planilha
 
 st.set_page_config(page_title="Validador de Vínculos", layout="wide")
 
-st.title("📄 Comprovantes de Vínculos - Validator")
-st.write("Faça o upload ou cole o link da carta para extrair os dados e auditar automaticamente.")
+st.title("📄 Comprovantes de Vínculos - By Divas do Sucesso do Associado")
+st.write("Faça o upload ou cole o link do comprovante para extrair os dados e validar automaticamente.")
 
 aba1, aba2 = st.tabs(["📂 Fazer Upload", "🔗 Inserir Link"])
 arquivo_pdf = None
