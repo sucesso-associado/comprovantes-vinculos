@@ -5,20 +5,18 @@ ID_PLANILHA = "1-1uuDbFa_M3aAeXj-NAyKkI8bxPw42rY4ktRrtYtPRA"
 
 # GIDs das abas
 GID_LOJAS = "805952313"
-GID_USUARIOS = "478021459"  # Coloque o GID exato da sua aba USUÁRIOS se for diferente
+GID_USUARIOS = "478021459"  # Ajuste com o GID exato da sua aba USUÁRIOS se for diferente
 
 URL_LOJAS = f"https://docs.google.com/spreadsheets/d/{ID_PLANILHA}/export?format=csv&gid={GID_LOJAS}"
 URL_USUARIOS = f"https://docs.google.com/spreadsheets/d/{ID_PLANILHA}/export?format=csv&gid={GID_USUARIOS}"
 
 def limpar_cnpj(cnpj):
-    """Limpa o CNPJ mantendo apenas números e garante 14 dígitos com zfill."""
+    """Limpa o CNPJ mantendo apenas números e preenche com zeros até 14 dígitos."""
     if not isinstance(cnpj, str): 
         cnpj = str(cnpj)
-    # Remove tudo que não é dígito
     apenas_numeros = re.sub(r'[^0-9]', '', cnpj)
     if not apenas_numeros:
         return ""
-    # Se o CNPJ tiver menos de 14 dígitos (por conta dos zeros truncados), preenche no início
     return apenas_numeros.zfill(14)
 
 def normalizar_texto(texto):
@@ -32,10 +30,11 @@ def validar_com_planilha(dados_pdf):
         return {"erro": "Sem CNPJ para validar."}
         
     try:
-        # 1. Carrega as duas abas
-        df_lojas = pd.read_csv(URL_LOJAS, dtype=str) # dtype=str evita perda de zeros na leitura inicial
+        # Carrega a aba LOJAS
+        df_lojas = pd.read_csv(URL_LOJAS, dtype=str)
         df_lojas.columns = df_lojas.columns.str.strip()
         
+        # Carrega a aba USUÁRIOS
         try:
             df_usuarios = pd.read_csv(URL_USUARIOS, dtype=str)
             df_usuarios.columns = df_usuarios.columns.str.strip()
@@ -44,7 +43,7 @@ def validar_com_planilha(dados_pdf):
 
         cnpj_busca = limpar_cnpj(dados_pdf["CNPJ"])
         
-        # --- 1. LOCALIZA A LOJA PELO CNPJ ---
+        # 1. LOCALIZA A LOJA PELO CNPJ
         col_cnpj_lojas = 'CNPJ' if 'CNPJ' in df_lojas.columns else df_lojas.columns[3]
         df_lojas['CNPJ_Limpo'] = df_lojas[col_cnpj_lojas].apply(limpar_cnpj)
         
@@ -57,10 +56,9 @@ def validar_com_planilha(dados_pdf):
         checklist = {}
         divergencias = 0
 
-        # Extrai a Rede/Bandeira da loja encontrada
         rede_da_loja = normalizar_texto(loja.get('Rede', '')) or normalizar_texto(loja.get('Bandeira', ''))
 
-        # --- 2. BUSCA PROPRIETÁRIOS (ABA USUÁRIOS) ---
+        # 2. BUSCA PROPRIETÁRIOS E REPRESENTANTES DA REDE
         proprietarios_encontrados = []
         representantes_rede_planilha = []
 
@@ -68,7 +66,6 @@ def validar_com_planilha(dados_pdf):
             col_cnpj_user = 'CNPJ - Loja' if 'CNPJ - Loja' in df_usuarios.columns else 'CNPJ'
             col_nome_user = 'Nome Completo' if 'Nome Completo' in df_usuarios.columns else 'Nome'
             
-            # Filtra Proprietários da Loja
             if col_cnpj_user in df_usuarios.columns:
                 df_usuarios['CNPJ_Limpo'] = df_usuarios[col_cnpj_user].apply(limpar_cnpj)
                 usuarios_loja = df_usuarios[df_usuarios['CNPJ_Limpo'] == cnpj_busca]
@@ -77,7 +74,6 @@ def validar_com_planilha(dados_pdf):
                     proprietarios_raw = usuarios_loja[col_nome_user].dropna().unique().tolist()
                     proprietarios_encontrados = [normalizar_texto(n) for n in proprietarios_raw]
 
-            # --- 3. BUSCA REPRESENTANTES DA REDE ESPECÍFICA (ABA USUÁRIOS) ---
             col_perfil = 'Perfil' if 'Perfil' in df_usuarios.columns else ''
             col_cargo = 'Cargo' if 'Cargo' in df_usuarios.columns else ''
             col_rede_user = 'Rede' if 'Rede' in df_usuarios.columns else 'Bandeira - Loja'
@@ -95,8 +91,7 @@ def validar_com_planilha(dados_pdf):
                 rep_raw = df_usuarios[filtro_final][col_nome_user].dropna().unique().tolist()
                 representantes_rede_planilha = [normalizar_texto(n) for n in rep_raw]
 
-        # --- VALIDAÇÕES E MONTAGEM DO CHECKLIST ---
-
+        # 3. MONTAGEM DO CHECKLIST
         # A) PROPRIETÁRIO
         nome_pdf = normalizar_texto(dados_pdf.get("Nome", ""))
         str_proprietarios_planilha = ", ".join(dict.fromkeys(proprietarios_encontrados)) if proprietarios_encontrados else "Nenhum cadastrado"
