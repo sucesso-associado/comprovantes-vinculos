@@ -1,6 +1,7 @@
 streamlit
 pandas
-requests
-pdfplumber
-google-genai
+pymupdf
+pypdf
+openai
 python-dotenv
+requests
